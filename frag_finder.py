@@ -6,7 +6,7 @@ import pandas
 import pyteomics
 
 
-#A program to identify peptide fragments and their location within a protein 
+#A program to identify peptide fragments and their location within a protein
 #using mass spectrometry data
 
 # https://pyteomics.readthedocs.io/en/latest/index.html
@@ -39,6 +39,25 @@ for seq in forms: print seq
 >>> mass.calculate_mass(sequence='TIDE', ion_type='y', charge=1)
 477.219119708098
 
+#from https://pyteomics.readthedocs.io/en/latest/examples/example_msms.html
+
+def fragments(peptide, types=('b', 'y'), maxcharge=1):
+    """
+    The function generates all possible m/z for fragments of types
+    `types` and of charges from 1 to `maxharge`.
+    """
+    for i in xrange(1, len(peptide)-1):
+        for ion_type in types:
+            for charge in xrange(1, maxcharge+1):
+                if ion_type[0] in 'abc':
+                    yield mass.fast_mass(
+                            peptide[:i], ion_type=ion_type, charge=charge)
+                else:
+                    yield mass.fast_mass(
+                            peptide[i:], ion_type=ion_type, charge=charge)
 
 
 
+######starting
+
+def fragments(peptide_seq):
