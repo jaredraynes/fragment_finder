@@ -64,8 +64,41 @@ def fragments(peptide, types=('b', 'y'), maxcharge=1):
 #def fragments(peptide_seq):
 
 def mass_cal(peptide_seq):
-    return(round(mass.calculate_mass(peptide_seq), 2))
+    return(round(mass.calculate_mass(peptide_seq, average = True), 1))
 
+def mass_diff(prot_seq, obs_masses):
+    prot_mass = round(mass.calculate_mass(prot_seq, average = True), 1)
+    mass_diffs = []
+    
+    for masses in obs_masses:
+        mass_diffs.append(prot_mass - masses)
+    return(mass_diffs)
+
+def fragments(prot_seq, mass_diffs):
+    obs = (23621.5,
+          23734.4,
+          23942.9,
+          24299.4,
+          25150.9,
+          25336.7,
+          26152.3,
+          26409)
+
+    found = []
+    start = 0
+    s = int(min(mass_diffs) // 100)
+    e = len(prot_seq)
+    for frag in prot_seq:
+        for i in range(s, e):
+            for num in obs:
+                if math.isclose(round(mass.calculate_mass(prot_seq[start:i], average = True), 1), num, abs_tol=0.5):
+                    if prot_seq[start:i] not in found:
+                        found.append(prot_seq[start:i]) 
+                        found.append(round(mass.calculate_mass(prot_seq[start:i], average = True), 1))
+        s += 1
+        e += 1
+        start += 1
+    print(found)
 
 if __name__ == "__main__":
     main()
