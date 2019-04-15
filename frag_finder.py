@@ -74,7 +74,9 @@ def mass_diff(prot_seq, obs_masses):
         mass_diffs.append(prot_mass - masses)
     return(mass_diffs)
 
-def fragments(prot_seq, mass_diffs):
+def import_masses()
+
+def fragments(prot_seq, obs_masses):
     obs = (23621.5,
           23734.4,
           23942.9,
@@ -99,6 +101,16 @@ def fragments(prot_seq, mass_diffs):
         e += 1
         start += 1
     print(found)
+
+def main():
+    input = argparse.ArgumentParser()
+    input.add_argument("protein_sequence", help = 'Input your protein sequence e.g. "PEPTIDE".', type = str)
+    input.add_argument("obs_mass_input_file", help = 'Input the exact location of your .XLSX file, e.g. "~/XXX/XXXX/masses.xlsx"', type = str)
+    input.add_argument("-s", "--save_output_file", help = 'Input the exact location where you would like your file saved, e.g. "~/XXX/XXXX/masses.xlsx"', type = str)
+    args = input.parse_args()
+    whole_prot_mass = mass_cal(args.protein_sequence)
+    observed_masses = 
+    fragments(args.protein_sequence, args.obs_mass_input_file)
 
 if __name__ == "__main__":
     main()
