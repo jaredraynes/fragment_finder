@@ -4,6 +4,8 @@ import matplotlib
 import lxml
 import pandas
 import pyteomics
+import csv
+import math
 from pyteomics import mass
 
 
@@ -42,20 +44,6 @@ from pyteomics import mass
 
 #from https://pyteomics.readthedocs.io/en/latest/examples/example_msms.html
 
-def fragments(peptide, types=('b', 'y'), maxcharge=1):
-    """
-    The function generates all possible m/z for fragments of types
-    `types` and of charges from 1 to `maxharge`.
-    """
-    for i in range(1, len(peptide)-1):
-        for ion_type in types:
-            for charge in range(1, maxcharge+1):
-                if ion_type[0] in 'abc':
-                    return mass.fast_mass(
-                            peptide[:i], ion_type=ion_type, charge=charge)
-                else:
-                    return   mass.fast_mass(
-                            peptide[i:], ion_type=ion_type, charge=charge)
 
 
 
@@ -66,34 +54,30 @@ def fragments(peptide, types=('b', 'y'), maxcharge=1):
 def mass_cal(peptide_seq):
     return(round(mass.calculate_mass(peptide_seq, average = True), 1))
 
-def mass_diff(prot_seq, obs_masses):
-    prot_mass = round(mass.calculate_mass(prot_seq, average = True), 1)
-    mass_diffs = []
+def import_obs_masses(file_location):
+    with open(file_location, "r") as csv_file:
+        obs_masses = []
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        next(csv_reader)
+        for lines in csv_reader:
+            obs_masses.append(float(lines[1]))
+    return(obs_masses)
+
+def mass_diff(prot_mass, obs_masses):
     
-    for masses in obs_masses:
-        mass_diffs.append(prot_mass - masses)
-    return(mass_diffs)
+    mass_diffs = [prot_mass - masses for masses in obs_masses]
+    return(int(min(mass_diffs) // 100))
 
-def import_masses()
-
-def fragments(prot_seq, obs_masses):
-    obs = (23621.5,
-          23734.4,
-          23942.9,
-          24299.4,
-          25150.9,
-          25336.7,
-          26152.3,
-          26409)
+def fragments(prot_seq, obs_masses, mass_diffs, tolerance):
 
     found = []
     start = 0
-    s = int(min(mass_diffs) // 100)
+    s = int(min(obs_masses)//140)
     e = len(prot_seq)
     for frag in prot_seq:
         for i in range(s, e):
-            for num in obs:
-                if math.isclose(round(mass.calculate_mass(prot_seq[start:i], average = True), 1), num, abs_tol=0.5):
+            for num in obs_masses:
+                if math.isclose(round(mass.calculate_mass(prot_seq[start:i], average = True), 1), num, abs_tol = tolerance):
                     if prot_seq[start:i] not in found:
                         found.append(prot_seq[start:i]) 
                         found.append(round(mass.calculate_mass(prot_seq[start:i], average = True), 1))
@@ -105,12 +89,14 @@ def fragments(prot_seq, obs_masses):
 def main():
     input = argparse.ArgumentParser()
     input.add_argument("protein_sequence", help = 'Input your protein sequence e.g. "PEPTIDE".', type = str)
-    input.add_argument("obs_mass_input_file", help = 'Input the exact location of your .XLSX file, e.g. "~/XXX/XXXX/masses.xlsx"', type = str)
+    input.add_argument("obs_mass_input_file", help = 'Input the exact location of your .csv file, e.g. "C:/Users/ray07c/Documents/Parkville_data/fragment_finder/files/VCLH_T-145-DSP-04_input.csv"', type = str)
+    input.add_argument("-t", "--mass_tolerance", help = 'kDa tolerance for observed masses vs calculated masses', type = float, default = 0.5)
     input.add_argument("-s", "--save_output_file", help = 'Input the exact location where you would like your file saved, e.g. "~/XXX/XXXX/masses.xlsx"', type = str)
     args = input.parse_args()
     whole_prot_mass = mass_cal(args.protein_sequence)
-    observed_masses = 
-    fragments(args.protein_sequence, args.obs_mass_input_file)
+    observed_masses = import_obs_masses(args.obs_mass_input_file)
+    mass_differences = mass_diff(whole_prot_mass, observed_masses)
+    fragments(args.protein_sequence, observed_masses, mass_differences, args.mass_tolerance)
 
 if __name__ == "__main__":
     main()
