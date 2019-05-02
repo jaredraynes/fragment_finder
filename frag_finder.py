@@ -6,46 +6,11 @@ import pandas
 import pyteomics
 import csv
 import math
+import multiprocessing
 from pyteomics import mass
 
 
-#A program to identify peptide fragments and their location within a protein
-#using mass spectrometry data
-
-# https://pyteomics.readthedocs.io/en/latest/index.html
-
-# potential code to use:
-
-#>>> from pyteomics import parser
-#>>> parser.cleave('AKAKBK', parser.expasy_rules['trypsin'], 0)
-#{'AK', 'BK'}
-
-#from pyteomics import parser
-#forms = parser.isoforms('PEPTIDE', variable_mods={'p': ['T'], 'ox': ['P']})
-#for seq in forms: print seq
-
-#>>> mass.calculate_mass(sequence='PEPTIDE')
-#799.359964027207
-
-#>>> from pyteomics import parser
-#>>> ps = parser.parse('PEPTIDE', show_unmodified_termini=True)
-#>>> mass.calculate_mass(parsed_sequence=ps)
-#799.359964027207
-
-#>>> from pyteomics import mass
-#>>> mass.calculate_mass(sequence='PEPTIDE', ion_type='M', charge=2)
-#400.6872584803735
-
-#>>> mass.calculate_mass(sequence='PEP', ion_type='b', charge=1)
-#324.15539725264904
-
-#>>> mass.calculate_mass(sequence='TIDE', ion_type='y', charge=1)
-#477.219119708098
-
 #from https://pyteomics.readthedocs.io/en/latest/examples/example_msms.html
-
-
-
 
 ######starting
 
@@ -64,27 +29,45 @@ def import_obs_masses(file_location):
     return(obs_masses)
 
 def mass_diff(prot_mass, obs_masses):
-    
-    mass_diffs = [prot_mass - masses for masses in obs_masses]
-    return(int(min(mass_diffs) // 100))
 
-def fragments(prot_seq, obs_masses, mass_diffs, tolerance):
+    mass_diffs = [prot_mass - masses for masses in obs_masses]
+    return(mass_diffs)
+
+def fragments(prot_seq, obs_masses, tolerance):
 
     found = []
     start = 0
-    s = int(min(obs_masses)//140)
-    e = len(prot_seq)
+    s = int(min(obs_masses)//105)
+    e = int(min(obs_masses)//90)
     for frag in prot_seq:
         for i in range(s, e):
             for num in obs_masses:
                 if math.isclose(round(mass.calculate_mass(prot_seq[start:i], average = True), 1), num, abs_tol = tolerance):
                     if prot_seq[start:i] not in found:
-                        found.append(prot_seq[start:i]) 
+                        found.append(prot_seq[start:i])
                         found.append(round(mass.calculate_mass(prot_seq[start:i], average = True), 1))
         s += 1
         e += 1
         start += 1
     print(found)
+
+def fragments_multi(prot_seq, obs_mass, tolerance):
+
+    found = []
+    start = 0
+    s = int(obs_mass)//107
+    e = int(obs_mass)//95
+    for frag in prot_seq:
+        for i in range(s, e):
+            if math.isclose(round(mass.calculate_mass(prot_seq[start:i], average = True), 1), obs_mass, abs_tol = tolerance):
+                if prot_seq[start:i] not in found:
+                    found.append(prot_seq[start:i])
+                    found.append(round(mass.calculate_mass(prot_seq[start:i], average = True), 1))
+        s += 1
+        e += 1
+        start += 1
+    if len(found) != 0:
+        print(found)
 
 def main():
     input = argparse.ArgumentParser()
@@ -95,8 +78,14 @@ def main():
     args = input.parse_args()
     whole_prot_mass = mass_cal(args.protein_sequence)
     observed_masses = import_obs_masses(args.obs_mass_input_file)
-    mass_differences = mass_diff(whole_prot_mass, observed_masses)
-    fragments(args.protein_sequence, observed_masses, mass_differences, args.mass_tolerance)
+    #mass_differences = mass_diff(whole_prot_mass, observed_masses)
+    multi = [(args.protein_sequence, mass, args.mass_tolerance) for mass in observed_masses]
+    #fragments(args.protein_sequence, observed_masses, args.mass_tolerance)
+
+    if __name__ == '__main__':
+        with multiprocessing.Pool(processes=2) as pool:
+            results = pool.starmap(fragments_multi, multi)
+        print(results)
 
 if __name__ == "__main__":
     main()
