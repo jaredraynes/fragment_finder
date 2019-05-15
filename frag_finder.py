@@ -7,6 +7,7 @@ import pyteomics
 import csv
 import math
 import multiprocessing
+import itertools as it
 from pyteomics import mass
 
 
@@ -86,16 +87,20 @@ def fragments_multi(prot_seq, obs_mass, dataframe, tolerance):
             if math.isclose(round(mass.calculate_mass(prot_seq[start:i], average = True), 1), obs_mass, abs_tol = tolerance):
                 if i == len(prot_seq):
                     find = ['single', 
-                            prot_seq[start] + str(start + 1),
-                            str(i),
+                            prot_seq[start], 
+                            int(start + 1),
+                            prot_seq[i-1],
+                            int(i),
                             obs_mass,
                             round(mass.calculate_mass(prot_seq[start:i], average = True), 1),
                             round(obs_mass - round(mass.calculate_mass(prot_seq[start:i], average = True), 1), 1)]
                     found.append(find)
                 else:
                     find = ['double', 
-                            prot_seq[start] + str(start + 1),
-                            str(i),
+                            prot_seq[start], 
+                            int(start + 1),
+                            prot_seq[i-1],
+                            int(i),
                             obs_mass,
                             round(mass.calculate_mass(prot_seq[start:i], average = True), 1),
                             round(obs_mass - round(mass.calculate_mass(prot_seq[start:i], average = True), 1), 1)]
@@ -118,12 +123,15 @@ def main():
     dataframe = import_dataframe(args.obs_mass_input_file)
     observed_masses = import_obs_masses(dataframe)
     multi = [(args.protein_sequence, mass, dataframe, args.mass_tolerance) for mass in observed_masses]
+    amino_list = [a for a in args.protein_sequence]
+    rejoined = ''
+
 
     if __name__ == '__main__':
         with multiprocessing.Pool(processes = args.number_of_cores) as pool:
             results = pool.starmap(fragments_multi, multi)
             combined = [index for line in results for index in line]
-            df1 = pandas.DataFrame(combined , columns = ['# Cuts', 'Cutsite (Nterm)', 'Cterm', 'M(obs)', 'M(calc)', 'deltaM'])
+            df1 = pandas.DataFrame(combined, columns = ['# Cuts', 'Nterm AA', 'Nterm Num', 'Cterm AA', 'Cterm Num', 'M(obs)', 'M(calc)', 'deltaM'])
             df_i = dataframe[['M(obs)', 'I']]
             df1_i = pandas.merge(df1, df_i, on= 'M(obs)', how='right')
             df1_i.dropna(how = 'any', inplace = True)
@@ -131,8 +139,16 @@ def main():
             df1_i['I'] = percent_i
             df1_i.rename(columns={'I':'% Intensity'}, inplace=True)
             df1_i.sort_values(['# Cuts', 'M(obs)'], ascending = [False, True], inplace=True)
+            df1_i['Nterm Num'] = df1_i['Nterm Num'].astype(dtype='int64')
+            df1_i['Cterm Num'] = df1_i['Cterm Num'].astype(dtype='int64')
+            df1_i = df1_i.reset_index(drop = True)
+            df1_i.index += 1
 
-        print(df1_i.to_string(index=False))
+            for a, b, in it.zip_longest(df1_i['Nterm Num'], df1_i.index):
+                amino_list[a-1] = amino_list[a-1] + str(b)
+
+        print(df1_i)
+        print(rejoined.join(amino_list))
 
 if __name__ == "__main__":
     main()
