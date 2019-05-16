@@ -8,8 +8,10 @@ import csv
 import math
 import multiprocessing
 import itertools as it
+import xlsxwriter
 from pyteomics import mass
 
+pandas.set_option('display.max_rows', 10)
 
 def import_dataframe(file_location):
 
@@ -116,15 +118,21 @@ def main():
     input.add_argument("protein_sequence", help = 'Input your protein sequence e.g. "PEPTIDE".', type = str)
     input.add_argument("obs_mass_input_file", help = 'Input the exact location of your .csv file, e.g. "C:/Users/ray07c/Documents/Parkville_data/fragment_finder/files/VCLH_T-145-DSP-04_input.csv"', type = str)
     input.add_argument("-t", "--mass_tolerance", help = 'kDa tolerance for observed masses vs calculated masses', type = float, default = 0.5)
-    input.add_argument("-s", "--save_output_file", help = 'Input the exact location where you would like your file saved, e.g. "~/XXX/XXXX/masses.xlsx"', type = str)
+    input.add_argument("-s", "--save_output_file", help = 'Input the exact location where you would like your file saved and its name, e.g. "~/XXX/XXXX/masses"', type = str)
     input.add_argument("-c", "--number_of_cores", help = 'Input the number of processing cores your computer has. The default is 2', type = int, default = 2)
     
     args = input.parse_args()
     dataframe = import_dataframe(args.obs_mass_input_file)
     observed_masses = import_obs_masses(dataframe)
     multi = [(args.protein_sequence, mass, dataframe, args.mass_tolerance) for mass in observed_masses]
-    amino_list = [a for a in args.protein_sequence]
-    rejoined = ''
+    amino_list_single_print = [a for a in args.protein_sequence]
+    amino_list_single_save = [a for a in args.protein_sequence]
+    amino_list_double_print = [a for a in args.protein_sequence]
+    amino_list_double_save = [a for a in args.protein_sequence]
+    rejoined_single_print = ''
+    rejoined_single_save = ''
+    rejoined_double_print = ''
+    rejoined_double_save = ''
 
 
     if __name__ == '__main__':
@@ -143,12 +151,43 @@ def main():
             df1_i['Cterm Num'] = df1_i['Cterm Num'].astype(dtype='int64')
             df1_i = df1_i.reset_index(drop = True)
             df1_i.index += 1
+            mask = df1_i['# Cuts'] == 'single'
+            df2_i = df1_i[mask]
+            df3_i = df1_i[~mask]
 
-            for a, b, in it.zip_longest(df1_i['Nterm Num'], df1_i.index):
-                amino_list[a-1] = amino_list[a-1] + str(b)
+            for a, b, in it.zip_longest(df2_i['Nterm Num'], df2_i.index):
+                amino_list_single_print[a-2] = amino_list_single_print[a-2] + '\x1b[0;33;40m' + str(b) + '\x1b[0m'
+                amino_list_single_save[a-2] = amino_list_single_save[a-2] + str(b)
 
-        print(df1_i)
-        print(rejoined.join(amino_list))
+            for a, b, in it.zip_longest(df3_i['Nterm Num'], df3_i.index):
+                amino_list_double_print[a-2] = amino_list_double_print[a-2] + '\x1b[6;36;40m' + str(b) + '\x1b[0m'
+                amino_list_double_save[a-2] = amino_list_double_save[a-2] + str(b)
+
+            for a, b, in it.zip_longest(df3_i['Cterm Num'], df3_i.index):
+                amino_list_double_print[a-2] = amino_list_double_print[a-2] + '\x1b[0;35;40m' + str(b) + '\x1b[0m'
+                amino_list_double_save[a-2] = amino_list_double_save[a-2] + str(b)
+
+        writer = pandas.ExcelWriter(args.save_output_file + '.xlsx', engine='xlsxwriter')
+        df2_i.to_excel(writer, sheet_name='Single_Cut')
+        df3_i.to_excel(writer, sheet_name='Double_Cut')
+        
+        workbook = writer.book
+        worksheet_single = writer.sheets['Single_Cut']
+        worksheet_single.write(
+            "A10",
+            rejoined_single_save.join(amino_list_single_save)
+        )
+        worksheet_double = writer.sheets['Double_Cut']
+        worksheet_double.write(
+            "A10",
+            rejoined_double_save.join(amino_list_double_save)
+        )
+        workbook.close()
+
+        print(df2_i.to_string())
+        print(rejoined_single_print.join(amino_list_single_print))
+        print(df3_i.to_string())
+        print(rejoined_double_print.join(amino_list_double_print))
 
 if __name__ == "__main__":
     main()
