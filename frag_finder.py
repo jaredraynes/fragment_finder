@@ -88,7 +88,7 @@ def fragments_multi(prot_seq, obs_mass, dataframe, tolerance):
                 break
             if math.isclose(round(mass.calculate_mass(prot_seq[start:i], average = True), 1), obs_mass, abs_tol = tolerance):
                 if i == len(prot_seq):
-                    find = ['single', 
+                    find = ['Single', 
                             prot_seq[start], 
                             int(start + 1),
                             prot_seq[i-1],
@@ -98,7 +98,7 @@ def fragments_multi(prot_seq, obs_mass, dataframe, tolerance):
                             round(obs_mass - round(mass.calculate_mass(prot_seq[start:i], average = True), 1), 1)]
                     found.append(find)
                 else:
-                    find = ['double', 
+                    find = ['Double', 
                             prot_seq[start], 
                             int(start + 1),
                             prot_seq[i-1],
@@ -134,6 +134,8 @@ def main():
     rejoined_double_print = ''
     rejoined_double_save = ''
 
+    writer = pandas.ExcelWriter(args.save_output_file + '.xlsx', engine='xlsxwriter')
+    workbook = writer.book
 
     if __name__ == '__main__':
         with multiprocessing.Pool(processes = args.number_of_cores) as pool:
@@ -151,7 +153,7 @@ def main():
             df1_i['Cterm Num'] = df1_i['Cterm Num'].astype(dtype='int64')
             df1_i = df1_i.reset_index(drop = True)
             df1_i.index += 1
-            mask = df1_i['# Cuts'] == 'single'
+            mask = df1_i['# Cuts'] == 'Single'
             df2_i = df1_i[mask]
             df3_i = df1_i[~mask]
 
@@ -167,21 +169,34 @@ def main():
                 amino_list_double_print[a-2] = amino_list_double_print[a-2] + '\x1b[0;35;40m' + str(b) + '\x1b[0m'
                 amino_list_double_save[a-2] = amino_list_double_save[a-2] + str(b)
 
+
+        rejoined_single_save = rejoined_single_save.join(amino_list_single_save)
+        rejoined_double_save = rejoined_double_save.join(amino_list_double_save)
+
         writer = pandas.ExcelWriter(args.save_output_file + '.xlsx', engine='xlsxwriter')
         df2_i.to_excel(writer, sheet_name='Single_Cut')
         df3_i.to_excel(writer, sheet_name='Double_Cut')
         
         workbook = writer.book
+        formatting = workbook.add_format({'text_wrap': True, 'font_name':'Courier New'})
+
         worksheet_single = writer.sheets['Single_Cut']
         worksheet_single.write(
-            "A10",
-            rejoined_single_save.join(amino_list_single_save)
+            'A' + str(len(df2_i.index) + 2),
+            rejoined_single_save,
+            formatting
         )
+        worksheet_single.set_column('A:A', 25)
+        worksheet_single.set_column('B:J', 10)
+
         worksheet_double = writer.sheets['Double_Cut']
         worksheet_double.write(
-            "A10",
-            rejoined_double_save.join(amino_list_double_save)
+            'A' + str(len(df2_i.index) + 2),
+            rejoined_double_save,
+            formatting
         )
+        worksheet_double.set_column('A:A', 25)
+        worksheet_double.set_column('B:J', 10)
         workbook.close()
 
         print(df2_i.to_string())
@@ -191,3 +206,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
