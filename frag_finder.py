@@ -11,8 +11,6 @@ import itertools as it
 import xlsxwriter
 from pyteomics import mass
 
-pandas.set_option('display.max_rows', 10)
-
 def import_dataframe(file_location):
 
     if 'csv' in file_location:
@@ -88,8 +86,8 @@ def fragments_multi(prot_seq, obs_mass, dataframe, tolerance):
                 break
             if math.isclose(round(mass.calculate_mass(prot_seq[start:i], average = True), 1), obs_mass, abs_tol = tolerance):
                 if i == len(prot_seq):
-                    find = ['Single', 
-                            prot_seq[start], 
+                    find = ['Single',
+                            prot_seq[start],
                             int(start + 1),
                             prot_seq[i-1],
                             int(i),
@@ -98,8 +96,8 @@ def fragments_multi(prot_seq, obs_mass, dataframe, tolerance):
                             round(obs_mass - round(mass.calculate_mass(prot_seq[start:i], average = True), 1), 1)]
                     found.append(find)
                 else:
-                    find = ['Double', 
-                            prot_seq[start], 
+                    find = ['Double',
+                            prot_seq[start],
                             int(start + 1),
                             prot_seq[i-1],
                             int(i),
@@ -120,7 +118,7 @@ def main():
     input.add_argument("-t", "--mass_tolerance", help = 'kDa tolerance for observed masses vs calculated masses', type = float, default = 0.5)
     input.add_argument("-s", "--save_output_file", help = 'Input the exact location where you would like your file saved and its name, e.g. "~/XXX/XXXX/masses"', type = str)
     input.add_argument("-c", "--number_of_cores", help = 'Input the number of processing cores your computer has. The default is 2', type = int, default = 2)
-    
+
     args = input.parse_args()
     dataframe = import_dataframe(args.obs_mass_input_file)
     observed_masses = import_obs_masses(dataframe)
@@ -133,9 +131,6 @@ def main():
     rejoined_single_save = ''
     rejoined_double_print = ''
     rejoined_double_save = ''
-
-    writer = pandas.ExcelWriter(args.save_output_file + '.xlsx', engine='xlsxwriter')
-    workbook = writer.book
 
     if __name__ == '__main__':
         with multiprocessing.Pool(processes = args.number_of_cores) as pool:
@@ -157,9 +152,21 @@ def main():
             df2_i = df1_i[mask]
             df3_i = df1_i[~mask]
 
+            writer = pandas.ExcelWriter(args.save_output_file + '.xlsx', engine='xlsxwriter')
+            df2_i.to_excel(writer, sheet_name='Single_Cut')
+            df3_i.to_excel(writer, sheet_name='Double_Cut')
+            workbook = writer.book
+
+            # Set up some formats to use.
+            bold = workbook.add_format({'bold': True})
+            italic = workbook.add_format({'italic': True})
+            red = workbook.add_format({'color': 'red'})
+            blue = workbook.add_format({'color': 'blue'})
+
             for a, b, in it.zip_longest(df2_i['Nterm Num'], df2_i.index):
                 amino_list_single_print[a-2] = amino_list_single_print[a-2] + '\x1b[0;33;40m' + str(b) + '\x1b[0m'
                 amino_list_single_save[a-2] = amino_list_single_save[a-2] + str(b)
+                #amino_list_single_save[a-2] = amino_list_single_save[a-2] + str(b)
 
             for a, b, in it.zip_longest(df3_i['Nterm Num'], df3_i.index):
                 amino_list_double_print[a-2] = amino_list_double_print[a-2] + '\x1b[6;36;40m' + str(b) + '\x1b[0m'
@@ -170,15 +177,18 @@ def main():
                 amino_list_double_save[a-2] = amino_list_double_save[a-2] + str(b)
 
 
-        rejoined_single_save = rejoined_single_save.join(amino_list_single_save)
+        #rejoined_single_save = rejoined_single_save.join(amino_list_single_save)
         rejoined_double_save = rejoined_double_save.join(amino_list_double_save)
 
-        writer = pandas.ExcelWriter(args.save_output_file + '.xlsx', engine='xlsxwriter')
-        df2_i.to_excel(writer, sheet_name='Single_Cut')
-        df3_i.to_excel(writer, sheet_name='Double_Cut')
-        
-        workbook = writer.book
+        #writer = pandas.ExcelWriter(args.save_output_file + '.xlsx', engine='xlsxwriter')
+        #df2_i.to_excel(writer, sheet_name='Single_Cut')
+        #df3_i.to_excel(writer, sheet_name='Double_Cut')
+
+        #workbook = writer.book
         formatting = workbook.add_format({'text_wrap': True, 'font_name':'Courier New'})
+
+
+
 
         worksheet_single = writer.sheets['Single_Cut']
         worksheet_single.write(
@@ -188,6 +198,12 @@ def main():
         )
         worksheet_single.set_column('A:A', 25)
         worksheet_single.set_column('B:J', 10)
+
+        font_try = ['MDHHHHA', red, '1', 'D', 'A', 'A', 'F', blue, 'K']
+        print(font_try)
+        print(amino_list_single_save)
+
+        #worksheet_single.write_rich_string('B12', *font_try)
 
         worksheet_double = writer.sheets['Double_Cut']
         worksheet_double.write(
@@ -206,4 +222,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
