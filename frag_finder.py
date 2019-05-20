@@ -163,7 +163,7 @@ def main():
         worksheet_single.write_rich_string(
         'A' + str(len(df2_i.index) + 2),
         *format_seq_single)
-        worksheet_single.set_column('A:A', 24, text_wrap)
+        worksheet_single.set_column('A:A', 25, text_wrap)
         worksheet_single.set_column('B:J', 10, alignment)
 
         #adding red colour and bold to the cut locations in the amino acid string sequence
@@ -177,7 +177,7 @@ def main():
         worksheet_double.write_rich_string(
         'A' + str(len(df2_i.index) + 2),
         *format_seq_double)
-        worksheet_double.set_column('A:A', 24, text_wrap)
+        worksheet_double.set_column('A:A', 25, text_wrap)
         worksheet_double.set_column('B:J', 10, alignment)
 
         workbook.close()
