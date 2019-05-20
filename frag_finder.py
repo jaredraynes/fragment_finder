@@ -29,51 +29,6 @@ def import_obs_masses(dataframe):
 
     return(list(dataframe['M(obs)']))
 
-def fragments(prot_seq, obs_masses, dataframe, tolerance):
-
-    single_cut = []
-    double_cut = []
-    start = 0
-    s = int(min(obs_masses)//105)
-    e = int(max(obs_masses)//90)
-    for frag in prot_seq:
-        for i in range(s, e):
-            if i > len(prot_seq):
-                break
-            for num in obs_masses:
-                if math.isclose(round(mass.calculate_mass(prot_seq[start:i], average = True), 1), num, abs_tol = tolerance):
-                    if i == len(prot_seq):
-                        find = [prot_seq[start] + str(start + 1),
-                                str(i),
-                                num,
-                                round(mass.calculate_mass(prot_seq[start:i], average = True), 1),
-                                round(num - round(mass.calculate_mass(prot_seq[start:i], average = True), 1), 1)]
-                        single_cut.append(find)
-                    else:
-                        find = [prot_seq[start] + str(start + 1),
-                                str(i),
-                                num,
-                                round(mass.calculate_mass(prot_seq[start:i], average = True), 1),
-                                round(num - round(mass.calculate_mass(prot_seq[start:i], average = True), 1), 1)]
-                        double_cut.append(find)
-        s += 1
-        e += 1
-        start += 1
-
-    df1 = pandas.DataFrame(single_cut, columns = ['Cutsite (Nterm)', 'Cterm', 'M(obs)', 'M(calc)', 'deltaM'])
-    df1.sort_values('M(obs)', inplace=True)
-    df2 = pandas.DataFrame(double_cut, columns = ['Cutsite (Nterm)', 'Cutsite (Cterm)', 'M(obs)', 'M(calc)', 'deltaM'])
-    df2.sort_values('M(obs)', inplace=True)
-    df_i = dataframe[['M(obs)', 'I']]
-    df1_i = pandas.merge(df1, df_i, on= 'M(obs)', how='right')
-    df1_i.dropna(how = 'any', inplace = True)
-    percent_i = [round(((num / max(df1_i['I'])) * 100), 2) for num in df1_i['I']]
-    df1_i['I'] = percent_i
-    df1_i.rename(columns={'I':'% Intensity'}, inplace=True)
-
-    print(df1_i.to_string(index=False))
-    print(df2.to_string(index=False))
-
 def fragments_multi(prot_seq, obs_mass, dataframe, tolerance):
 
     found = []
@@ -122,51 +77,52 @@ def main():
     args = input.parse_args()
     dataframe = import_dataframe(args.obs_mass_input_file)
     observed_masses = import_obs_masses(dataframe)
+    #making a list of argument inputs for the multiprocessing
     multi = [(args.protein_sequence, mass, dataframe, args.mass_tolerance) for mass in observed_masses]
+    #converting the protein amino acid sequence into a list of individual amino acids so that the cut
+    #location can be simply inserted by using indexing
     amino_list_single_print = [a for a in args.protein_sequence]
     amino_list_single_save = [a for a in args.protein_sequence]
     amino_list_double_print = [a for a in args.protein_sequence]
     amino_list_double_save = [a for a in args.protein_sequence]
+    #creating empty string to be able to convert the above lists back into single strings
     rejoined_single_print = ''
     rejoined_single_save = ''
     rejoined_double_print = ''
     rejoined_double_save = ''
 
+    #building the multiprocessing capability of the program
     if __name__ == '__main__':
         with multiprocessing.Pool(processes = args.number_of_cores) as pool:
             results = pool.starmap(fragments_multi, multi)
+            #combining the multiprocessing results to put into a pandas dataframe
             combined = [index for line in results for index in line]
             df1 = pandas.DataFrame(combined, columns = ['# Cuts', 'Nterm AA', 'Nterm Num', 'Cterm AA', 'Cterm Num', 'M(obs)', 'M(calc)', 'deltaM'])
+            #Selecting the intensity 'I' parameter and 'M(obs)' so that can merge it to the dataframe
             df_i = dataframe[['M(obs)', 'I']]
             df1_i = pandas.merge(df1, df_i, on= 'M(obs)', how='right')
             df1_i.dropna(how = 'any', inplace = True)
+            #converting the intensity to a percentage
             percent_i = [round(((num / max(df1_i['I'])) * 100), 2) for num in df1_i['I']]
             df1_i['I'] = percent_i
             df1_i.rename(columns={'I':'% Intensity'}, inplace=True)
             df1_i.sort_values(['# Cuts', 'M(obs)'], ascending = [False, True], inplace=True)
+            #changing the data types so the amino acid number is an integer
             df1_i['Nterm Num'] = df1_i['Nterm Num'].astype(dtype='int64')
             df1_i['Cterm Num'] = df1_i['Cterm Num'].astype(dtype='int64')
             df1_i = df1_i.reset_index(drop = True)
             df1_i.index += 1
+            #splitting the datafram into two dataframes, one for single cuts and one for double cuts
             mask = df1_i['# Cuts'] == 'Single'
             df2_i = df1_i[mask]
             df3_i = df1_i[~mask]
 
-            writer = pandas.ExcelWriter(args.save_output_file + '.xlsx', engine='xlsxwriter')
-            df2_i.to_excel(writer, sheet_name='Single_Cut')
-            df3_i.to_excel(writer, sheet_name='Double_Cut')
-            workbook = writer.book
-
-            # Set up some formats to use.
-            bold = workbook.add_format({'bold': True})
-            italic = workbook.add_format({'italic': True})
-            red = workbook.add_format({'color': 'red'})
-            blue = workbook.add_format({'color': 'blue'})
-
+            #iterating over the protein amino acid sequence list and inserting colour formatting and the
+            #index identification number from the dataframe so you know which mass has come about from
+            #which cut location
             for a, b, in it.zip_longest(df2_i['Nterm Num'], df2_i.index):
                 amino_list_single_print[a-2] = amino_list_single_print[a-2] + '\x1b[0;33;40m' + str(b) + '\x1b[0m'
                 amino_list_single_save[a-2] = amino_list_single_save[a-2] + str(b)
-                #amino_list_single_save[a-2] = amino_list_single_save[a-2] + str(b)
 
             for a, b, in it.zip_longest(df3_i['Nterm Num'], df3_i.index):
                 amino_list_double_print[a-2] = amino_list_double_print[a-2] + '\x1b[6;36;40m' + str(b) + '\x1b[0m'
@@ -176,43 +132,54 @@ def main():
                 amino_list_double_print[a-2] = amino_list_double_print[a-2] + '\x1b[0;35;40m' + str(b) + '\x1b[0m'
                 amino_list_double_save[a-2] = amino_list_double_save[a-2] + str(b)
 
-
-        #rejoined_single_save = rejoined_single_save.join(amino_list_single_save)
+        #rejoining the amino acid sequence lists back into a single string
+        rejoined_single_save = rejoined_single_save.join(amino_list_single_save)
         rejoined_double_save = rejoined_double_save.join(amino_list_double_save)
 
-        #writer = pandas.ExcelWriter(args.save_output_file + '.xlsx', engine='xlsxwriter')
-        #df2_i.to_excel(writer, sheet_name='Single_Cut')
-        #df3_i.to_excel(writer, sheet_name='Double_Cut')
+        #using xlsxwriter to write the dataframes and amino acid sequences to excel spreadsheets
+        writer = pandas.ExcelWriter(args.save_output_file + '.xlsx', engine='xlsxwriter')
+        df2_i.to_excel(writer, sheet_name='Single_Cut')
+        df3_i.to_excel(writer, sheet_name='Double_Cut')
 
-        #workbook = writer.book
-        formatting = workbook.add_format({'text_wrap': True, 'font_name':'Courier New'})
+        workbook = writer.book
 
+        # Set up some formats to use
+        red = workbook.add_format({'color': 'red', 'font_name':'Courier New', 'bold': True})
+        font = workbook.add_format({'font_name':'Courier New'})
+        text_wrap = workbook.add_format({'text_wrap': True})
+        alignment = workbook.add_format({'align': 'center'})
 
+        #converting the dataframe index to a list of strings so can search for them below
+        index = [str(ind) for ind in df1_i.index]
 
-
+        #adding red colour and bold to the cut locations in the amino acid string sequence
         worksheet_single = writer.sheets['Single_Cut']
-        worksheet_single.write(
-            'A' + str(len(df2_i.index) + 2),
-            rejoined_single_save,
-            formatting
-        )
-        worksheet_single.set_column('A:A', 25)
-        worksheet_single.set_column('B:J', 10)
+        format_seq_single = []
+        for base in rejoined_single_save:
+            if base in index:
+                format_seq_single.extend((red, base))
+            else:
+                format_seq_single.extend((font, base))
+        worksheet_single.write_rich_string(
+        'A' + str(len(df2_i.index) + 2),
+        *format_seq_single)
+        worksheet_single.set_column('A:A', 24, text_wrap)
+        worksheet_single.set_column('B:J', 10, alignment)
 
-        font_try = ['MDHHHHA', red, '1', 'D', 'A', 'A', 'F', blue, 'K']
-        print(font_try)
-        print(amino_list_single_save)
-
-        #worksheet_single.write_rich_string('B12', *font_try)
-
+        #adding red colour and bold to the cut locations in the amino acid string sequence
         worksheet_double = writer.sheets['Double_Cut']
-        worksheet_double.write(
-            'A' + str(len(df2_i.index) + 2),
-            rejoined_double_save,
-            formatting
-        )
-        worksheet_double.set_column('A:A', 25)
-        worksheet_double.set_column('B:J', 10)
+        format_seq_double = []
+        for base in rejoined_double_save:
+            if base in index:
+                format_seq_double.extend((red, base))
+            else:
+                format_seq_double.extend((font, base))
+        worksheet_double.write_rich_string(
+        'A' + str(len(df2_i.index) + 2),
+        *format_seq_double)
+        worksheet_double.set_column('A:A', 24, text_wrap)
+        worksheet_double.set_column('B:J', 10, alignment)
+
         workbook.close()
 
         print(df2_i.to_string())
