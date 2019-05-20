@@ -150,7 +150,7 @@ def main():
         alignment = workbook.add_format({'align': 'center'})
 
         #converting the dataframe index to a list of strings so can search for them below
-        index = [str(ind) for ind in df1_i.index]
+        index = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 
         #adding red colour and bold to the cut locations in the amino acid string sequence
         worksheet_single = writer.sheets['Single_Cut']
@@ -169,13 +169,14 @@ def main():
         #adding red colour and bold to the cut locations in the amino acid string sequence
         worksheet_double = writer.sheets['Double_Cut']
         format_seq_double = []
+        print(rejoined_double_save)
         for base in rejoined_double_save:
             if base in index:
                 format_seq_double.extend((red, base))
             else:
                 format_seq_double.extend((font, base))
         worksheet_double.write_rich_string(
-        'A' + str(len(df2_i.index) + 2),
+        'A' + str(len(df3_i.index) + 2),
         *format_seq_double)
         worksheet_double.set_column('A:A', 25, text_wrap)
         worksheet_double.set_column('B:J', 10, alignment)
