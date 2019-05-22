@@ -21,9 +21,13 @@ def import_dataframe(file_location):
         dataframe.rename(columns={'m/z':'M(obs)'}, inplace=True)
     return(dataframe)
 
-def mass_cal(peptide_seq):
+def mass_cal(peptide_seq, cal_type):
 
-    return(round(mass.calculate_mass(peptide_seq, average = True), 1))
+    if cal_type == mono:
+        return(round(mass.calculate_mass(peptide_seq, average = True), 1)) #return mono
+    else:
+
+        return(round(mass.calculate_mass(peptide_seq, average = True), 1)) #return average mass
 
 def import_obs_masses(dataframe):
 
