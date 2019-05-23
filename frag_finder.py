@@ -21,20 +21,19 @@ def import_dataframe(file_location):
         dataframe.rename(columns={'m/z':'M(obs)'}, inplace=True)
     return(dataframe)
 
-def mass_cal(peptide_seq, cal_type):
-
-    if cal_type == mono:
-        return(round(mass.calculate_mass(peptide_seq, average = True), 1)) #return mono
-    else:
-
-        return(round(mass.calculate_mass(peptide_seq, average = True), 1)) #return average mass
-
 def import_obs_masses(dataframe):
 
     return(list(dataframe['M(obs)']))
 
-def fragments_multi(prot_seq, obs_mass, dataframe, tolerance):
+def fragments_multi(prot_seq, obs_mass, cal_type, dataframe, tolerance):
 
+    if cal_type == 'mono':
+        aa_comp = dict(mass.std_aa_mass)
+        ave_cal = False
+    else:
+        aa_comp = dict(mass.std_aa_comp)
+        ave_cal = True
+    
     found = []
     start = 0
     s = int(obs_mass)//107
@@ -43,7 +42,7 @@ def fragments_multi(prot_seq, obs_mass, dataframe, tolerance):
         for i in range(s, e):
             if i > len(prot_seq):
                 break
-            if math.isclose(round(mass.calculate_mass(prot_seq[start:i], average = True), 1), obs_mass, abs_tol = tolerance):
+            if math.isclose(round(mass.calculate_mass(prot_seq[start:i], average = ave_cal, aa_comp = aa_comp), 1), obs_mass, abs_tol = tolerance):
                 if i == len(prot_seq):
                     find = ['Single',
                             prot_seq[start],
@@ -51,8 +50,8 @@ def fragments_multi(prot_seq, obs_mass, dataframe, tolerance):
                             prot_seq[i-1],
                             int(i),
                             obs_mass,
-                            round(mass.calculate_mass(prot_seq[start:i], average = True), 1),
-                            round(obs_mass - round(mass.calculate_mass(prot_seq[start:i], average = True), 1), 1)]
+                            round(mass.calculate_mass(prot_seq[start:i], average = ave_cal, aa_comp = aa_comp), 1),
+                            round(obs_mass - round(mass.calculate_mass(prot_seq[start:i], average = ave_cal, aa_comp = aa_comp), 1), 1)]
                     found.append(find)
                 else:
                     find = ['Double',
@@ -61,8 +60,8 @@ def fragments_multi(prot_seq, obs_mass, dataframe, tolerance):
                             prot_seq[i-1],
                             int(i),
                             obs_mass,
-                            round(mass.calculate_mass(prot_seq[start:i], average = True), 1),
-                            round(obs_mass - round(mass.calculate_mass(prot_seq[start:i], average = True), 1), 1)]
+                            round(mass.calculate_mass(prot_seq[start:i], average = ave_cal, aa_comp = aa_comp), 1),
+                            round(obs_mass - round(mass.calculate_mass(prot_seq[start:i], average = ave_cal, aa_comp = aa_comp), 1), 1)]
                     found.append(find)
         s += 1
         e += 1
@@ -77,12 +76,13 @@ def main():
     input.add_argument("-t", "--mass_tolerance", help = 'kDa tolerance for observed masses vs calculated masses', type = float, default = 0.5)
     input.add_argument("-s", "--save_output_file", help = 'Input the exact location where you would like your file saved and its name, e.g. "~/XXX/XXXX/masses"', type = str)
     input.add_argument("-c", "--number_of_cores", help = 'Input the number of processing cores your computer has. The default is 2', type = int, default = 2)
+    input.add_argument("-i", "--isotopic_mass_cal", help = 'Input "mono" if you would like to caluclate the monoisoptic masses of the calculated, the default is average mass', type = str, default = 'average')
 
     args = input.parse_args()
     dataframe = import_dataframe(args.obs_mass_input_file)
     observed_masses = import_obs_masses(dataframe)
     #making a list of argument inputs for the multiprocessing
-    multi = [(args.protein_sequence, mass, dataframe, args.mass_tolerance) for mass in observed_masses]
+    multi = [(args.protein_sequence, mass, args.isotopic_mass_cal, dataframe, args.mass_tolerance) for mass in observed_masses]
     #converting the protein amino acid sequence into a list of individual amino acids so that the cut
     #location can be simply inserted by using indexing
     amino_list_single_print = [a for a in args.protein_sequence]
