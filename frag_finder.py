@@ -21,6 +21,16 @@ def import_dataframe(file_location):
         dataframe.rename(columns={'m/z':'M(obs)'}, inplace=True)
     return(dataframe)
 
+def import_dataframe_jupyter(file_location):
+
+    if 'csv' in file_location:
+        dataframe = pandas.read_csv(file_location.strip('"'))
+        dataframe.rename(columns={'m/z':'M(obs)'}, inplace=True)
+    else:
+        dataframe = pandas.read_excel(file_location.strip('"'))
+        dataframe.rename(columns={'m/z':'M(obs)'}, inplace=True)
+    return(dataframe)
+
 def import_obs_masses(dataframe):
 
     return(list(dataframe['M(obs)']))
@@ -33,7 +43,7 @@ def fragments_multi(prot_seq, obs_mass, cal_type, dataframe, tolerance):
     else:
         aa_comp = dict(mass.std_aa_comp)
         ave_cal = True
-    
+
     found = []
     start = 0
     s = int(obs_mass)//107
