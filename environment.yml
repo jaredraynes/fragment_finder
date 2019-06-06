@@ -1,0 +1,17 @@
+name: frag_finder-env
+
+dependencies:
+  - numpy
+  - matplotlib
+  - lxml
+  - pandas
+  - csv
+  - multprocessing
+  - itertools
+  - ipywidgets
+  - reportlab
+  - datetime
+  - python=3.7
+
+  - pip:
+    - pyteomics==4.1.1
