@@ -16,8 +16,8 @@ To activate the environment type:
 
 conda active fragment_finder-env
 
-Now Run Jupyter Notebook by typing:
+Now Run the Jupyter Notebook by typing:
 
-Jupyter Notebook
+Jupyter Notebook Frag_finder_app.ipynb
 
-Open the Frag_finder_app Notebook and Run all cells
+Run the notebook by selecting "Run all" in the Cell tab
