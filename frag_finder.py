@@ -126,6 +126,7 @@ def main():
             df1_i['Cterm Num'] = df1_i['Cterm Num'].astype(dtype='int64')
             df1_i = df1_i.reset_index(drop = True)
             df1_i.index += 1
+            df1_i.round(2)
             #splitting the datafram into two dataframes, one for single cuts and one for double cuts
             mask = df1_i['# Cuts'] == 'Single'
             df2_i = df1_i[mask]
@@ -151,9 +152,16 @@ def main():
         rejoined_double_save = rejoined_double_save.join(amino_list_double_save)
 
         #using xlsxwriter to write the dataframes and amino acid sequences to excel spreadsheets
-        writer = pandas.ExcelWriter(args.save_output_file + '.xlsx', engine='xlsxwriter')
-        df2_i.to_excel(writer, sheet_name='Single_Cut')
-        df3_i.to_excel(writer, sheet_name='Double_Cut')
+        if len(df2_i) and len(df3_i) != 0:
+            writer = pandas.ExcelWriter(args.save_output_file + '.xlsx', engine='xlsxwriter')
+        else:
+            print('No Excel File Written')
+
+        if len(df2_i) != 0:
+            df2_i.to_excel(writer, sheet_name='Single_Cut')
+
+        if len(df2_i) != 0:
+            df3_i.to_excel(writer, sheet_name='Double_Cut')
 
         workbook = writer.book
 
@@ -167,40 +175,51 @@ def main():
         index = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 
         #adding red colour and bold to the cut locations in the amino acid string sequence
-        worksheet_single = writer.sheets['Single_Cut']
-        format_seq_single = []
-        for base in rejoined_single_save:
-            if base in index:
-                format_seq_single.extend((red, base))
-            else:
-                format_seq_single.extend((font, base))
-        worksheet_single.write_rich_string(
-        'A' + str(len(df2_i.index) + 2),
-        *format_seq_single)
-        worksheet_single.set_column('A:A', 25, text_wrap)
-        worksheet_single.set_column('B:J', 10, alignment)
+        if len(df2_i) != 0:
+            worksheet_single = writer.sheets['Single_Cut']
+            format_seq_single = []
+            for base in rejoined_single_save:
+                if base in index:
+                    format_seq_single.extend((red, base))
+                else:
+                    format_seq_single.extend((font, base))
+            worksheet_single.write_rich_string(
+            'A' + str(len(df2_i.index) + 2),
+            *format_seq_single)
+            worksheet_single.set_column('A:A', 25, text_wrap)
+            worksheet_single.set_column('B:J', 10, alignment)
 
         #adding red colour and bold to the cut locations in the amino acid string sequence
-        worksheet_double = writer.sheets['Double_Cut']
-        format_seq_double = []
-        print(rejoined_double_save)
-        for base in rejoined_double_save:
-            if base in index:
-                format_seq_double.extend((red, base))
-            else:
-                format_seq_double.extend((font, base))
-        worksheet_double.write_rich_string(
-        'A' + str(len(df3_i.index) + 2),
-        *format_seq_double)
-        worksheet_double.set_column('A:A', 25, text_wrap)
-        worksheet_double.set_column('B:J', 10, alignment)
+        if len(df3_i) != 0:
+            worksheet_double = writer.sheets['Double_Cut']
+            format_seq_double = []
+            for base in rejoined_double_save:
+                if base in index:
+                    format_seq_double.extend((red, base))
+                else:
+                    format_seq_double.extend((font, base))
+            worksheet_double.write_rich_string(
+            'A' + str(len(df3_i.index) + 2),
+            *format_seq_double)
+            worksheet_double.set_column('A:A', 25, text_wrap)
+            worksheet_double.set_column('B:J', 10, alignment)
 
         workbook.close()
 
-        print(df2_i.to_string())
-        print(rejoined_single_print.join(amino_list_single_print))
-        print(df3_i.to_string())
-        print(rejoined_double_print.join(amino_list_double_print))
+        if len(df2_i) and len(df3_i) == 0:
+            print('No Matches Found for Observed Masses and Amino Acid Sequence')
+
+        if len(df2_i) != 0:
+            print(df2_i.to_string())
+            print(rejoined_single_print.join(amino_list_single_print))
+        else:
+            print('No Single Cuts Found')
+
+        if len(df3_i) != 0:
+            print(df3_i.to_string())
+            print(rejoined_double_print.join(amino_list_double_print))
+        else:
+            print('No Double Cuts Found')
 
 if __name__ == "__main__":
     main()
